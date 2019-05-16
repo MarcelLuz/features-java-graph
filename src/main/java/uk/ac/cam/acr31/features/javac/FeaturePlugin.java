@@ -34,6 +34,8 @@ import java.io.IOError;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.Set;
+
+import org.apache.commons.lang3.StringUtils;
 import uk.ac.cam.acr31.features.javac.graph.DotOutput;
 import uk.ac.cam.acr31.features.javac.graph.FeatureGraph;
 import uk.ac.cam.acr31.features.javac.graph.ProtoOutput;
@@ -55,10 +57,13 @@ import uk.ac.cam.acr31.features.javac.syntactic.SymbolScanner;
 
 public class FeaturePlugin implements Plugin {
 
-  private static final String FEATURES_OUTPUT_DIRECTORY = "featuresOutputDirectory";
+  private static final int OUTPUT_DIRECTORY = 0;
+  private static final int DOT_OUTPUT = 1;
   private static final String ABORT_ON_ERROR = "abortOnError";
   private static final String VERBOSE_DOT = "verboseDot";
-  private static final String DOT_OUTPUT = "dotOutput";
+
+  private String featuresOutputDirectory = StringUtils.EMPTY;
+  private boolean dotOutput = true;
 
   @Override
   public String getName() {
@@ -78,22 +83,26 @@ public class FeaturePlugin implements Plugin {
               return;
             }
 
-            process(e, context);
+            if (args.length != 0) {
+              featuresOutputDirectory = args[OUTPUT_DIRECTORY];
+              dotOutput = Boolean.valueOf(args[DOT_OUTPUT]);
+            } else {
+              System.out.println("Two args are required for extraction "
+                      + "(DestinationPath and Boolean for Dot-File)");
+            }
+
+            process(e, context, featuresOutputDirectory, dotOutput);
           }
         });
   }
 
-  private static void process(TaskEvent taskEvent, Context context) {
+  private static void process(TaskEvent taskEvent, Context context,
+                              String featuresOutputDirectory, boolean dotOutput) {
 
     Options options = Options.instance(context);
 
     boolean abortOnError = options.getBoolean(ABORT_ON_ERROR);
     boolean verboseDot = options.getBoolean(VERBOSE_DOT);
-    boolean dotOutput = options.getBoolean(DOT_OUTPUT, true);
-    String featuresOutputDirectory = ".";
-    if (options.isSet(FEATURES_OUTPUT_DIRECTORY)) {
-      featuresOutputDirectory = options.get(FEATURES_OUTPUT_DIRECTORY);
-    }
 
     JCTree.JCCompilationUnit compilationUnit =
         (JCTree.JCCompilationUnit) taskEvent.getCompilationUnit();
@@ -264,7 +273,7 @@ public class FeaturePlugin implements Plugin {
   private static void linkCommentsToAstNodes(FeatureGraph featureGraph) {
     for (FeatureNode comment : featureGraph.comments()) {
       FeatureNode successor =
-          Iterables.getOnlyElement(featureGraph.successors(comment, EdgeType.COMMENT));
+              Iterables.getOnlyElement(featureGraph.successors(comment, EdgeType.COMMENT));
       if (comment.getEndLineNumber() == successor.getStartLineNumber()) {
         continue;
       }
@@ -292,11 +301,11 @@ public class FeaturePlugin implements Plugin {
       }
       if (match != null) {
         featureGraph.removeEdge(
-            FeatureEdge.newBuilder()
-                .setSourceId(comment.getId())
-                .setDestinationId(successor.getId())
-                .setType(EdgeType.COMMENT)
-                .build());
+                FeatureEdge.newBuilder()
+                        .setSourceId(comment.getId())
+                        .setDestinationId(successor.getId())
+                        .setType(EdgeType.COMMENT)
+                        .build());
 
         featureGraph.addEdge(comment, match, EdgeType.COMMENT);
       }
