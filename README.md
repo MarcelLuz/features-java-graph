@@ -16,7 +16,7 @@ JDK 1.10+
 
 #### Step2: to generate .dot and .proto files
 ``` 
- javac -cp target/features-javac-1.0.0-SNAPSHOT-jar-with-dependencies.jar -Xplugin:FeaturePlugin Source_code 
+ javac -cp features-javac-1.0.0-SNAPSHOT-jar-with-dependencies.jar -Xplugin:FeaturePlugin Source_code 
 
 ```
 
