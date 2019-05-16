@@ -1,4 +1,19 @@
-*~
+# Compiled class file
+target
+
+# Log file
+*.log
+
+### IntelliJ IDEA ###
+.idea
+*.iws
 *.iml
-target/
-.idea/
+*.ipr
+
+# Package Files #
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
