@@ -34,6 +34,8 @@ import java.io.IOError;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
 import uk.ac.cam.acr31.features.javac.graph.DotOutput;
@@ -111,7 +113,8 @@ public class FeaturePlugin implements Plugin {
       FeatureGraph featureGraph = createFeatureGraph(compilationUnit, context);
       writeOutput(featureGraph, featuresOutputDirectory, verboseDot, dotOutput);
     } catch (AssertionError | RuntimeException e) {
-      String message = "Feature extraction failed: " + taskEvent.getSourceFile().getName();
+      String message = "Feature extraction failed: "
+              + getFileNameWithoutPath(taskEvent.getSourceFile().getName());
       if (abortOnError) {
         throw new RuntimeException(message, e);
       } else {
@@ -152,7 +155,7 @@ public class FeaturePlugin implements Plugin {
       JCTree.JCCompilationUnit compilationUnit, Context context) {
     FeatureGraph featureGraph =
         new FeatureGraph(
-            compilationUnit.getSourceFile().getName(),
+            getFileNameWithoutPath(compilationUnit.getSourceFile().getName()),
             compilationUnit.endPositions,
             compilationUnit.lineMap);
     AstScanner.addToGraph(compilationUnit, featureGraph);
@@ -310,5 +313,17 @@ public class FeaturePlugin implements Plugin {
         featureGraph.addEdge(comment, match, EdgeType.COMMENT);
       }
     }
+  }
+
+  private static String getFileNameWithoutPath(String fullName) {
+    String cleanName;
+    final Pattern pattern = Pattern.compile("\\w+(?:\\.\\w+)*$");
+    Matcher matcher = pattern.matcher(fullName);
+    if (matcher.find()) {
+      cleanName = matcher.group();
+    } else {
+      cleanName = fullName;
+    }
+    return cleanName;
   }
 }
