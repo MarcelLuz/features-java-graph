@@ -38,6 +38,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
+import org.checkerframework.com.github.javaparser.ast.CompilationUnit;
+import uk.ac.cam.acr31.features.javac.exceptions.FeatureExtractionException;
 import uk.ac.cam.acr31.features.javac.graph.DotOutput;
 import uk.ac.cam.acr31.features.javac.graph.FeatureGraph;
 import uk.ac.cam.acr31.features.javac.graph.ProtoOutput;
@@ -93,13 +95,18 @@ public class FeaturePlugin implements Plugin {
                       + "(DestinationPath and Boolean for Dot-File)");
             }
 
-            process(e, context, featuresOutputDirectory, dotOutput);
+            try {
+              process(e, context, featuresOutputDirectory, dotOutput);
+            } catch (FeatureExtractionException ex) {
+              ex.printStackTrace();
+            }
           }
         });
   }
 
   private static void process(TaskEvent taskEvent, Context context,
-                              String featuresOutputDirectory, boolean dotOutput) {
+                              String featuresOutputDirectory,
+                              boolean dotOutput) throws FeatureExtractionException {
 
     Options options = Options.instance(context);
 
@@ -118,7 +125,7 @@ public class FeaturePlugin implements Plugin {
       if (abortOnError) {
         throw new RuntimeException(message, e);
       } else {
-        System.out.println(message);
+        throw new FeatureExtractionException(message,e);
       }
     }
   }
@@ -167,22 +174,32 @@ public class FeaturePlugin implements Plugin {
     removeIdentifierAstNodes(featureGraph);
 
     JavacProcessingEnvironment processingEnvironment = JavacProcessingEnvironment.instance(context);
-    var analysisResults = DataflowOutputs.create(compilationUnit, processingEnvironment);
-    DataflowOutputsScanner.addToGraph(compilationUnit, analysisResults, featureGraph);
 
-    var typeAnalysis = new TypeAnalysis(compilationUnit, processingEnvironment);
-    TypeScanner.addToGraph(compilationUnit, featureGraph, typeAnalysis);
-    AssignabilityAnalysis.addToGraph(featureGraph, typeAnalysis);
 
-    ComputedFromScanner.addToGraph(compilationUnit, featureGraph);
+    try {
+      var analysisResults = DataflowOutputs.create(compilationUnit, processingEnvironment);
+      DataflowOutputsScanner.addToGraph(compilationUnit, analysisResults, featureGraph);
+      var typeAnalysis = new TypeAnalysis(compilationUnit, processingEnvironment);
+      TypeScanner.addToGraph(compilationUnit, featureGraph, typeAnalysis);
+      AssignabilityAnalysis.addToGraph(featureGraph, typeAnalysis);
+      ComputedFromScanner.addToGraph(compilationUnit, featureGraph);
+      buildMainFeatures(compilationUnit,featureGraph);
+      linkCommentsToAstNodes(featureGraph);
+    } catch (Exception e) {
+      System.out.println("Error Compiling Abstract-Super-Classes or Interfaces (hotfix)");
+      buildMainFeatures(compilationUnit, featureGraph);
+    }
+    return featureGraph;
+  }
+
+  private static void buildMainFeatures(JCTree.JCCompilationUnit compilationUnit,
+                                        FeatureGraph featureGraph) {
     LastLexicalUseScanner.addToGraph(compilationUnit, featureGraph);
     ReturnsToScanner.addToGraph(compilationUnit, featureGraph);
     FormalArgScanner.addToGraph(compilationUnit, featureGraph);
     GuardedByScanner.addToGraph(compilationUnit, featureGraph);
     SymbolScanner.addToGraph(compilationUnit, featureGraph);
     linkCommentsToAstNodes(featureGraph);
-
-    return featureGraph;
   }
 
   private static void removeIdentifierAstNodes(FeatureGraph graph) {
