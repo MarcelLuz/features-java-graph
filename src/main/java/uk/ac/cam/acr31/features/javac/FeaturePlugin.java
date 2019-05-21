@@ -140,7 +140,7 @@ public class FeaturePlugin implements Plugin {
     }
   }
 
-  private static void writeOutput(
+  public static void writeOutput(
       FeatureGraph featureGraph,
       String featuresOutputDirectory,
       boolean verboseDot,
@@ -158,7 +158,7 @@ public class FeaturePlugin implements Plugin {
     ProtoOutput.write(protoFile, featureGraph);
   }
 
-  static FeatureGraph createFeatureGraph(
+  public static FeatureGraph createFeatureGraph(
       JCTree.JCCompilationUnit compilationUnit, Context context) {
     FeatureGraph featureGraph =
         new FeatureGraph(
